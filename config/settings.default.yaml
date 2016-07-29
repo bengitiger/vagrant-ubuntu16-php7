@@ -1,0 +1,37 @@
+---
+provider: virtualbox
+box: 'ubuntu/xenial64'
+
+machine_ip: "192.168.10.10"
+machine_memory: 1024
+machine_cpus: 1
+machine_name: 'ubuntu16php7'
+machine_hostname: 'vagrant'
+
+# Guest OS timezone
+timezone: "Europe/London"
+
+# Your personal GitHub token
+# You can generate it here: https://github.com/settings/tokens
+github_token: <your-personal-github-token>
+
+box_check_update: false
+
+authorize: ~/.ssh/id_rsa.pub
+
+keys:
+  - ~/.ssh/id_rsa
+
+folders:
+  - map: "C:/www"
+    to: "/var/www"
+
+sites:
+  - map: dev.example1.com
+    to: /var/www/example1.com/public
+#  - map: dev.example2.com
+#    to: /var/www/html/example2.com/public
+
+ports:
+  - send: 3000
+    to: 3000

@@ -1,0 +1,8 @@
+# Vagrant
+/.vagrant/
+/*.log
+
+# Project
+/config/settings.yaml
+
+!.gitkeep
