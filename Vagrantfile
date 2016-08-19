@@ -44,7 +44,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   VAGRANT_USER = (if config.vm.box == "ubuntu/xenial64" then "ubuntu" else "vagrant" end)
 
   # Configure A Private Network IP
-  config.vm.network :private_network, ip: settings["ip"] ||= "192.168.10.10"
+  config.vm.network :private_network, ip: settings["machine_ip"] ||= "192.168.10.10"
 
   # Configure Additional Networks
   if settings.has_key?("networks")
@@ -55,7 +55,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   # Configure A Few VirtualBox Settings
   config.vm.provider "virtualbox" do |vb|
-    vb.name = settings["machine_name"] ||= "ubuntu16php7"
+    vb.name = settings["machine_name"] ||= "ubuntu16php"
     vb.customize ["modifyvm", :id, "--memory", settings["memory"] ||= "1024"]
     vb.customize ["modifyvm", :id, "--cpus", settings["cpus"] ||= "1"]
     vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
@@ -66,7 +66,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Configure A Few VMware Settings
   ["vmware_fusion", "vmware_workstation"].each do |vmware|
     config.vm.provider vmware do |v|
-      v.vmx["displayName"] = settings["name"] ||= "ubuntu16php7"
+      v.vmx["displayName"] = settings["name"] ||= "ubuntu16php"
       v.vmx["memsize"] = settings["memory"] ||= 1024
       v.vmx["numvcpus"] = settings["cpus"] ||= 1
       v.vmx["guestOS"] = "ubuntu-64"
@@ -164,31 +164,34 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   # Provisioning
-  config.vm.provision "web", type: "shell", inline: 'bash /vagrant/provision/setup.sh'
+  config.vm.define :vm_web do |vm_web|
+    vm_web.vm.provision "web", type: "shell", inline: 'bash /vagrant/provision/setup.sh'
 
-  # Clear nginx Virtual Hosts
-  config.vm.provision :shell, path: scriptDir + "/scripts/clear-nginx.sh", run: 'always'
+    # Clear nginx Virtual Hosts
+    vm_web.vm.provision :shell, path: scriptDir + "/scripts/clear-nginx.sh", run: 'always'
 
-  # Set Up nginx Virtual Hosts
-  if settings.include? 'sites'
-    settings["sites"].each do |site|
-      config.vm.provision "shell", run: 'always' do |s|
-        s.name = "Creating virtual hosts to: " + site["map"]
-        s.path = scriptDir + "/provision/create-nginx-virtual-hosts.sh"
-        s.args = [site["map"], site["to"], site["port"] ||= "80", site["ssl"] ||= "443"]
+    # Set Up nginx Virtual Hosts
+    if settings.include? 'sites'
+      settings["sites"].each do |site|
+        vm_web.vm.provision "shell", run: 'always' do |s|
+          s.name = "Creating virtual hosts to: " + site["map"]
+          s.path = scriptDir + "/provision/create-nginx-virtual-hosts.sh"
+          s.args = [site["map"], site["to"], site["port"] ||= "80", site["ssl"] ||= "443"]
+        end
       end
     end
-  end
 
-  # Local Machine Hosts
-  #
-  # If the Vagrant plugin hostsupdater (https://github.com/cogitatio/vagrant-hostsupdater) is
-  # installed, the following will automatically configure your local machine's hosts file to
-  # be aware of the domains specified below.
-  if defined? VagrantPlugins::HostsUpdater
-    config.hostsupdater.aliases = settings['sites'].map { |site| site['map'] }
-  end
+    # Local Machine Hosts
+    #
+    # If the Vagrant plugin hostsupdater (https://github.com/cogitatio/vagrant-hostsupdater) is
+    # installed, the following will automatically configure your local machine's hosts file to
+    # be aware of the domains specified below.
+    if defined? VagrantPlugins::HostsUpdater
+      vm_web.hostsupdater.aliases = settings['sites'].map { |site| site['map'] }
+    end
 
-  # Restart services
-  config.vm.provision :shell, path: scriptDir + "/scripts/restart-services.sh", run: 'always'
+    # Restart services
+    vm_web.vm.provision :shell, path: scriptDir + "/provision/configure.sh", run: 'always'
+    vm_web.vm.provision :shell, path: scriptDir + "/scripts/restart-services.sh", run: 'always'
+  end
 end
